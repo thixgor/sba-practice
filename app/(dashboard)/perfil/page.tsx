@@ -26,6 +26,7 @@ import {
   Clock,
   X,
 } from "lucide-react";
+import jsQR from "jsqr";
 
 export default function PerfilPage() {
   const { user, refreshUser } = useAuth();
@@ -237,29 +238,23 @@ export default function PerfilPage() {
     const canvas = canvasRef.current;
 
     if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
 
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Try BarcodeDetector API (supported in Chrome/Edge)
-    if ("BarcodeDetector" in window) {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const detector = new (window as any).BarcodeDetector({
-          formats: ["qr_code"],
-        });
-        const barcodes = await detector.detect(canvas);
-        if (barcodes.length > 0) {
-          const value = barcodes[0].rawValue;
-          handleQRResult(value);
-          return;
-        }
-      } catch {
-        // BarcodeDetector failed, continue
-      }
+    // Use jsQR for universal browser support
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "dontInvert",
+    });
+
+    if (code && code.data) {
+      handleQRResult(code.data);
+      return;
     }
   };
 
