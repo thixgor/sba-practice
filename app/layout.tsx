@@ -27,6 +27,10 @@ const ibmPlexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  icons: {
+    icon: "/images/favicon-192x192.png",
+    apple: "/images/favicon-192x192.png",
+  },
   title: {
     default: "SBA Practice - Plataforma de Prática da Sociedade Brasileira de Anestesiologia",
     template: "%s | SBA Practice",

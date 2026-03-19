@@ -98,19 +98,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 border-b border-border/50 px-5">
         <Image
-          src="https://www.sbahq.org/wp-content/themes/artedigitalv1/dist/images/logo-w.svg"
-          alt="SBA"
-          width={36}
+          src="https://i.imgur.com/ebTUw4n.png"
+          alt="SBA Practice"
+          width={140}
           height={36}
-          className="h-9 w-9 rounded-lg bg-[#0A2463] object-contain p-1.5"
+          className="h-9 w-auto object-contain"
           unoptimized
         />
-        <div className="flex flex-col">
-          <span className="text-sm font-bold tracking-tight">SBA Practice</span>
-          <span className="text-[10px] text-muted-foreground leading-tight">
-            Sistema de Avaliações
-          </span>
-        </div>
         {/* Mobile close */}
         <Button
           variant="ghost"

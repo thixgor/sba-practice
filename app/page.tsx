@@ -509,47 +509,66 @@ export default function LandingPage() {
 
         {/* Hero content */}
         <div className="relative z-10 mx-auto max-w-7xl w-full px-5 sm:px-8 pt-24 pb-20 lg:pt-32 lg:pb-28">
-          <div className="max-w-3xl">
-            <FadeIn>
-              <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#00A896]/30 bg-[#00A896]/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[1.5px] text-[#00A896]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#00A896] animate-pulse" />
-                Plataforma Oficial de Prática
-              </span>
-            </FadeIn>
+          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+            {/* Left — Copy */}
+            <div>
+              <FadeIn>
+                <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-[#00A896]/30 bg-[#00A896]/10 px-4 py-1.5 text-[11px] font-semibold uppercase tracking-[1.5px] text-[#00A896]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#00A896] animate-pulse" />
+                  Plataforma Oficial de Prática
+                </span>
+              </FadeIn>
 
-            <FadeIn delay={100}>
-              <h1 className="mt-4 text-[32px] font-bold leading-[1.15] tracking-[-0.5px] text-white sm:text-[42px] lg:text-[52px]">
-                Sociedade Brasileira{" "}
-                <span className="text-[#00A896]">de Anestesiologia</span>
-              </h1>
-            </FadeIn>
+              <FadeIn delay={100}>
+                <h1 className="mt-4 text-[32px] font-bold leading-[1.15] tracking-[-0.5px] text-white sm:text-[42px] lg:text-[52px]">
+                  Sociedade Brasileira{" "}
+                  <span className="text-[#00A896]">de Anestesiologia</span>
+                </h1>
+              </FadeIn>
 
-            <FadeIn delay={200}>
-              <p className="mt-6 max-w-xl text-[17px] leading-[1.7] text-[#B0C4DE] sm:text-[18px]">
-                Há 78 anos, a casa da Anestesiologia Brasileira. Plataforma
-                oficial para prática cognitiva, avaliações e acompanhamento de
-                performance nos cursos da SBA.
-              </p>
-            </FadeIn>
+              <FadeIn delay={200}>
+                <p className="mt-6 max-w-xl text-[17px] leading-[1.7] text-[#B0C4DE] sm:text-[18px]">
+                  Há 78 anos, a casa da Anestesiologia Brasileira. Plataforma
+                  oficial para prática cognitiva, avaliações e acompanhamento de
+                  performance nos cursos da SBA.
+                </p>
+              </FadeIn>
 
-            <FadeIn delay={320}>
-              <div className="mt-10 flex flex-wrap gap-4">
-                <a
-                  href="https://anuidade.sbahq.org/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex h-[48px] items-center gap-2.5 rounded-lg bg-[#E15B07] px-7 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-[#C94E06] hover:shadow-lg hover:shadow-[#E15B07]/25"
-                >
-                  Associe-se agora
-                  <ArrowRight className="h-4.5 w-4.5" strokeWidth={2} />
-                </a>
-                <Link
-                  href="/login"
-                  className="inline-flex h-[48px] items-center gap-2.5 rounded-lg bg-[#00A896] px-7 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-[#008A78] hover:shadow-lg hover:shadow-[#00A896]/25"
-                >
-                  Acesse a Academia SBA
-                  <ArrowRight className="h-4.5 w-4.5" strokeWidth={2} />
-                </Link>
+              <FadeIn delay={320}>
+                <div className="mt-10 flex flex-wrap gap-4">
+                  <a
+                    href="https://anuidade.sbahq.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-[48px] items-center gap-2.5 rounded-lg bg-[#E15B07] px-7 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-[#C94E06] hover:shadow-lg hover:shadow-[#E15B07]/25"
+                  >
+                    Associe-se agora
+                    <ArrowRight className="h-4.5 w-4.5" strokeWidth={2} />
+                  </a>
+                  <Link
+                    href="/login"
+                    className="inline-flex h-[48px] items-center gap-2.5 rounded-lg bg-[#00A896] px-7 text-[15px] font-semibold text-white transition-all duration-200 hover:bg-[#008A78] hover:shadow-lg hover:shadow-[#00A896]/25"
+                  >
+                    Acesse a Academia SBA
+                    <ArrowRight className="h-4.5 w-4.5" strokeWidth={2} />
+                  </Link>
+                </div>
+              </FadeIn>
+            </div>
+
+            {/* Right — Hero illustration (prática simulacionista) */}
+            <FadeIn delay={250} className="hidden lg:block">
+              <div className="relative">
+                <div className="absolute -inset-4 rounded-2xl bg-gradient-to-br from-[#00A896]/20 to-[#0A2463]/20 blur-2xl" aria-hidden="true" />
+                <Image
+                  src="https://i.imgur.com/bybhVIw.png"
+                  alt="Prática simulacionista em anestesiologia — SBA Practice"
+                  width={800}
+                  height={450}
+                  className="relative w-full rounded-xl border border-white/10 shadow-2xl shadow-black/30"
+                  priority
+                  unoptimized
+                />
               </div>
             </FadeIn>
           </div>
