@@ -185,10 +185,10 @@ export default function RegisterPage() {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 opacity-60">
               <div className="space-y-1.5">
                 <Label htmlFor="cpf" className="text-[12px] font-semibold text-[#0A2463]">
-                  CPF
+                  CPF <span className="font-normal text-[#4A5568]/60">(opcional)</span>
                 </Label>
                 <Input
                   id="cpf"
@@ -200,7 +200,7 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="crm" className="text-[12px] font-semibold text-[#0A2463]">
-                  CRM
+                  CRM <span className="font-normal text-[#4A5568]/60">(opcional)</span>
                 </Label>
                 <Input
                   id="crm"
