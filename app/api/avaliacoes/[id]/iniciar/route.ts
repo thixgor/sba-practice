@@ -4,6 +4,7 @@ import connectDB from '@/lib/db/mongoose';
 import Avaliacao from '@/lib/db/models/Avaliacao';
 import Questao from '@/lib/db/models/Questao';
 import Tentativa from '@/lib/db/models/Tentativa';
+import User from '@/lib/db/models/User';
 import AuditLog from '@/lib/db/models/AuditLog';
 import { withAuth, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
 import { generateProtocolId } from '@/lib/utils/protocol';
@@ -58,6 +59,24 @@ export const POST = withAuth(async (req: AuthenticatedRequest, ctx: RouteContext
         { error: 'NOT_FOUND', message: 'Avaliacao nao encontrada ou inativa.' },
         { status: 404 },
       );
+    }
+
+    // Check course access for non-admin users
+    if (req.user.role !== 'admin' && avaliacao.curso) {
+      const user = await User.findById(req.user.userId);
+      if (!user) {
+        return NextResponse.json(
+          { error: 'FORBIDDEN', message: 'Voce nao tem acesso a esta avaliacao.' },
+          { status: 403 },
+        );
+      }
+      const activeCursoIds = user.getActiveCursos().map((c) => c.toString());
+      if (!activeCursoIds.includes(avaliacao.curso.toString())) {
+        return NextResponse.json(
+          { error: 'FORBIDDEN', message: 'Voce nao tem acesso ao curso desta avaliacao.' },
+          { status: 403 },
+        );
+      }
     }
 
     const isEvolutivo = avaliacao.tipo === 'simulado-evolutivo';

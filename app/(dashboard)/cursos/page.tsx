@@ -14,6 +14,7 @@ interface Curso {
   imageUrl?: string;
   duracao?: number;
   avaliacoes: unknown[];
+  hasAccess?: boolean;
 }
 
 export default function CursosPage() {
@@ -87,6 +88,7 @@ export default function CursosPage() {
               avaliacoesTotal={curso.avaliacoes?.length || 0}
               avaliacoesConcluidas={0}
               index={i}
+              locked={curso.hasAccess === false}
             />
           ))}
         </div>

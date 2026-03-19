@@ -55,6 +55,7 @@ export default function PerfilPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const scanProcessedRef = useRef(false);
 
   // Auto-fill serial key from URL params (?serial=...)
   useEffect(() => {
@@ -173,6 +174,7 @@ export default function PerfilPage() {
   const startScanner = async () => {
     try {
       setScanning(true);
+      scanProcessedRef.current = false;
 
       // Small delay to let the video element render
       await new Promise((r) => setTimeout(r, 100));
@@ -232,6 +234,7 @@ export default function PerfilPage() {
   };
 
   const scanFrame = async () => {
+    if (scanProcessedRef.current) return;
     if (!videoRef.current || !canvasRef.current) return;
 
     const video = videoRef.current;
@@ -259,6 +262,8 @@ export default function PerfilPage() {
   };
 
   const handleQRResult = (value: string) => {
+    if (scanProcessedRef.current) return;
+    scanProcessedRef.current = true;
     stopScanner();
 
     // Extract serial key from URL or direct key

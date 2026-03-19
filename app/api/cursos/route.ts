@@ -32,17 +32,14 @@ export const GET = withAuth(async (req: AuthenticatedRequest, _ctx: RouteContext
       ];
     }
 
-    // For non-admin users, filter to only their active courses
-    if (req.user.role !== 'admin') {
+    // Get user's active course IDs for access marking
+    let activeCursoIds: string[] = [];
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isAdmin) {
       const user = await User.findById(req.user.userId);
       if (user) {
-        const activeCursoIds = user.getActiveCursos();
-        if (activeCursoIds.length === 0) {
-          return NextResponse.json({ cursos: [] }, { status: 200 });
-        }
-        filter._id = { $in: activeCursoIds };
-      } else {
-        return NextResponse.json({ cursos: [] }, { status: 200 });
+        activeCursoIds = user.getActiveCursos().map((c) => c.toString());
       }
     }
 
@@ -55,11 +52,19 @@ export const GET = withAuth(async (req: AuthenticatedRequest, _ctx: RouteContext
       .sort({ createdAt: -1 })
       .lean();
 
-    // Filter out null entries left by populate match
+    // Filter out null entries left by populate match and mark access
     for (const curso of cursos) {
       if (curso.avaliacoes) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         curso.avaliacoes = (curso.avaliacoes as any[]).filter(Boolean);
+      }
+      // Mark access status for non-admin users
+      if (!isAdmin) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (curso as any).hasAccess = activeCursoIds.includes(curso._id.toString());
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (curso as any).hasAccess = true;
       }
     }
 

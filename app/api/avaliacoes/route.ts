@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongoose';
 import Avaliacao from '@/lib/db/models/Avaliacao';
 import Questao from '@/lib/db/models/Questao';
 import Curso from '@/lib/db/models/Curso';
-import { withAdmin, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
+import User from '@/lib/db/models/User';
+import { withAuth, withAdmin, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
 import { avaliacaoSchema, questaoSchema, questaoEvolutivaSchema, pacienteInicialSchema } from '@/lib/utils/validators';
 import { generateProtocolId } from '@/lib/utils/protocol';
 import { sanitizeObject } from '@/lib/security/sanitize';
@@ -13,10 +14,10 @@ import { encryptIfNeeded } from '@/lib/utils/crypto';
 void Curso;
 
 // ---------------------------------------------------------------------------
-// GET /api/avaliacoes - List evaluations with optional filters
+// GET /api/avaliacoes - List evaluations (filtered by course access)
 // ---------------------------------------------------------------------------
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: AuthenticatedRequest, _ctx: RouteContext) => {
   try {
     await connectDB();
 
@@ -48,6 +49,23 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // For non-admin users, only show evaluations from courses they have access to
+    // or evaluations not linked to any course (public evaluations)
+    if (req.user.role !== 'admin') {
+      const user = await User.findById(req.user.userId);
+      const activeCursoIds = user ? user.getActiveCursos() : [];
+      // Show: evaluations with no course (public) OR evaluations from accessible courses
+      filter.$and = [
+        ...(filter.$and ? (filter.$and as unknown[]) : []),
+        {
+          $or: [
+            { curso: null },
+            { curso: { $in: activeCursoIds } },
+          ],
+        },
+      ];
+    }
+
     const avaliacoes = await Avaliacao.find(filter)
       .populate('curso', 'name protocolId')
       .sort({ createdAt: -1 })
@@ -61,7 +79,7 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/avaliacoes - Create an evaluation (admin only)
