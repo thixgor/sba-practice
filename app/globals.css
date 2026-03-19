@@ -297,10 +297,84 @@
 /* Landing page fade-in (IntersectionObserver driven) */
 .landing-fade-in {
   opacity: 0;
-  transform: translateY(16px);
-  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  transform: translateY(20px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .landing-fade-in.landing-visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* ─── ECG / Pulse Wave Animation ─── */
+@keyframes ecg-draw {
+  0% { stroke-dashoffset: 2000; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes ecg-fade {
+  0%, 90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.ecg-path {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: ecg-draw 4s linear infinite;
+}
+.ecg-path-delayed {
+  stroke-dasharray: 2000;
+  stroke-dashoffset: 2000;
+  animation: ecg-draw 4s linear infinite 2s;
+}
+
+/* ─── Breathing / Pulse Effect for Icons ─── */
+@keyframes breathing {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+.animate-breathing {
+  animation: breathing 3s ease-in-out infinite;
+}
+.animate-breathing:hover {
+  animation: breathing 1.5s ease-in-out infinite;
+}
+
+/* ─── Floating Particles (CSS-only) ─── */
+@keyframes particle-float {
+  0% { transform: translateY(0) translateX(0) scale(1); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-100vh) translateX(20px) scale(0.5); opacity: 0; }
+}
+
+/* ─── Hero Gradient Shimmer ─── */
+@keyframes hero-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Medical Glow Hover ─── */
+.medical-glow {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.medical-glow:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 30px rgba(0, 168, 150, 0.15), 0 2px 8px rgba(10, 36, 99, 0.08);
+}
+
+/* ─── Timeline Line ─── */
+@keyframes timeline-grow {
+  from { width: 0; }
+  to { width: 100%; }
+}
+.timeline-line-animated {
+  animation: timeline-grow 1.2s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+/* ─── Counter Glow ─── */
+@keyframes counter-glow {
+  0%, 100% { text-shadow: 0 0 0 transparent; }
+  50% { text-shadow: 0 0 20px rgba(0, 168, 150, 0.3); }
+}
+.counter-glow {
+  animation: counter-glow 3s ease-in-out infinite;
 }
