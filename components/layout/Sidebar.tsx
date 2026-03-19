@@ -18,6 +18,7 @@ import {
   FileText,
   X,
   ChevronRight,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -74,6 +75,11 @@ const adminNavItems = [
     label: "Avaliações",
     href: "/admin/avaliacoes",
     icon: FileText,
+  },
+  {
+    label: "Serial Keys",
+    href: "/admin/serial-keys",
+    icon: KeyRound,
   },
   {
     label: "Relatórios",

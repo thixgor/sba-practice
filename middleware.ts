@@ -12,7 +12,7 @@ const publicPaths = [
   "/api/admin/seed",
 ];
 
-const publicPrefixes = ["/verificar", "/_next", "/favicon", "/images", "/convite", "/api/invites"];
+const publicPrefixes = ["/verificar", "/_next", "/favicon", "/images", "/convite", "/api/invites", "/api/serial-keys/scan"];
 
 function isPublicPath(pathname: string): boolean {
   if (publicPaths.includes(pathname)) return true;

@@ -4,6 +4,18 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 // Interface
 // ---------------------------------------------------------------------------
 
+export interface ICursoAccess {
+  curso: Types.ObjectId;
+  /** When this access was granted */
+  grantedAt: Date;
+  /** When this access expires (null = unlimited) */
+  expiresAt: Date | null;
+  /** Source of access: serial-key, invite, or admin */
+  source: 'serial-key' | 'invite' | 'admin';
+  /** Reference ID (serial key protocolId, invite token, etc.) */
+  sourceRef: string | null;
+}
+
 export interface IUser extends Document {
   _id: Types.ObjectId;
   protocolId: string;
@@ -14,6 +26,8 @@ export interface IUser extends Document {
   cpf: string | null;
   crm: string | null;
   cursos: Types.ObjectId[];
+  /** Course access with expiration tracking */
+  cursosAccess: ICursoAccess[];
   lastLogin: Date | null;
   isActive: boolean;
   loginAttempts: number;
@@ -24,6 +38,8 @@ export interface IUser extends Document {
 
   /** Returns true when the account is currently locked out due to failed login attempts. */
   isLocked(): boolean;
+  /** Returns active (non-expired) course IDs */
+  getActiveCursos(): Types.ObjectId[];
 }
 
 // ---------------------------------------------------------------------------
@@ -81,6 +97,22 @@ const UserSchema = new Schema<IUser>(
         ref: 'Curso',
       },
     ],
+    cursosAccess: {
+      type: [
+        {
+          curso: { type: Schema.Types.ObjectId, ref: 'Curso', required: true },
+          grantedAt: { type: Date, default: Date.now },
+          expiresAt: { type: Date, default: null },
+          source: {
+            type: String,
+            enum: ['serial-key', 'invite', 'admin'],
+            default: 'admin',
+          },
+          sourceRef: { type: String, default: null },
+        },
+      ],
+      default: [],
+    },
     lastLogin: {
       type: Date,
       default: null,
@@ -136,6 +168,25 @@ const UserSchema = new Schema<IUser>(
 UserSchema.methods.isLocked = function (this: IUser): boolean {
   if (!this.lockUntil) return false;
   return this.lockUntil.getTime() > Date.now();
+};
+
+/**
+ * Returns course IDs where access has not expired.
+ * Combines legacy `cursos` array (unlimited access) with `cursosAccess` entries.
+ */
+UserSchema.methods.getActiveCursos = function (this: IUser): Types.ObjectId[] {
+  const now = Date.now();
+  const activeFromAccess = (this.cursosAccess || [])
+    .filter((a) => !a.expiresAt || a.expiresAt.getTime() > now)
+    .map((a) => a.curso);
+
+  // Merge with legacy cursos (no expiration)
+  const allIds = new Set([
+    ...this.cursos.map((c) => c.toString()),
+    ...activeFromAccess.map((c) => c.toString()),
+  ]);
+
+  return Array.from(allIds).map((id) => new Types.ObjectId(id));
 };
 
 // ---------------------------------------------------------------------------

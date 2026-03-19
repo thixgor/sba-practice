@@ -707,3 +707,95 @@ export const paginationFromSearchParams = z.object({
 });
 
 export type PaginationFromSearchParams = z.infer<typeof paginationFromSearchParams>;
+
+// ---------------------------------------------------------------------------
+// Serial Key schemas
+// ---------------------------------------------------------------------------
+
+/** Course access entry for serial keys. */
+export const serialKeyCursoAccessSchema = z.object({
+  cursoId: objectIdField,
+  /** Access duration in minutes. null = unlimited */
+  accessDurationMinutes: z
+    .number()
+    .int()
+    .positive('A duracao de acesso deve ser positiva.')
+    .max(525600, 'Duracao maxima: 525600 minutos (365 dias).')
+    .optional()
+    .nullable(),
+});
+
+/**
+ * Admin: create serial key.
+ */
+export const createSerialKeySchema = z.object({
+  cursos: z
+    .array(serialKeyCursoAccessSchema)
+    .min(1, 'Selecione pelo menos um curso.'),
+  /** Key expiration in minutes (null = never expires) */
+  expiresInMinutes: z
+    .number()
+    .int()
+    .positive('O tempo de expiracao deve ser positivo.')
+    .max(525600, 'Expiracao maxima: 525600 minutos (365 dias).')
+    .optional()
+    .nullable(),
+  maxUses: z
+    .number()
+    .int()
+    .positive('O numero maximo de usos deve ser positivo.')
+    .max(10000, 'Maximo de 10000 usos.')
+    .optional()
+    .nullable()
+    .default(1),
+  label: z
+    .string()
+    .trim()
+    .max(200, 'Label deve ter no maximo 200 caracteres.')
+    .optional()
+    .nullable(),
+});
+
+export type CreateSerialKeyInput = z.infer<typeof createSerialKeySchema>;
+
+/**
+ * User: activate serial key.
+ */
+export const activateSerialKeySchema = z.object({
+  key: z
+    .string()
+    .trim()
+    .min(1, 'A chave serial e obrigatoria.')
+    .max(128, 'Chave serial invalida.'),
+});
+
+export type ActivateSerialKeyInput = z.infer<typeof activateSerialKeySchema>;
+
+// ---------------------------------------------------------------------------
+// Updated invite schema with course access
+// ---------------------------------------------------------------------------
+
+/**
+ * Admin: create invite link with optional course access.
+ */
+export const createInviteWithCoursesSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .email('Informe um email valido.')
+    .optional()
+    .or(z.literal('')),
+  role: z.enum(['admin', 'user']).default('user'),
+  expiresInHours: z
+    .number()
+    .int()
+    .positive('O tempo de expiracao deve ser positivo.')
+    .max(720, 'Tempo maximo de expiracao: 720 horas (30 dias).')
+    .default(48),
+  /** Courses to grant access to upon invite acceptance */
+  cursos: z
+    .array(serialKeyCursoAccessSchema)
+    .optional()
+    .default([]),
+});

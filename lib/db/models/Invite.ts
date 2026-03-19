@@ -4,6 +4,12 @@ import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 // Interface
 // ---------------------------------------------------------------------------
 
+export interface IInviteCursoAccess {
+  curso: Types.ObjectId;
+  /** Access duration in minutes. null = unlimited */
+  accessDurationMinutes: number | null;
+}
+
 export interface IInvite extends Document {
   _id: Types.ObjectId;
   token: string;
@@ -16,6 +22,8 @@ export interface IInvite extends Document {
   usedBy: Types.ObjectId | null;
   revokedAt: Date | null;
   metadata: Record<string, unknown> | null;
+  /** Courses to grant access to upon acceptance */
+  cursosAccess: IInviteCursoAccess[];
   createdAt: Date;
   updatedAt: Date;
 
@@ -84,6 +92,15 @@ const InviteSchema = new Schema<IInvite>(
     metadata: {
       type: Schema.Types.Mixed,
       default: null,
+    },
+    cursosAccess: {
+      type: [
+        {
+          curso: { type: Schema.Types.ObjectId, ref: 'Curso', required: true },
+          accessDurationMinutes: { type: Number, default: null },
+        },
+      ],
+      default: [],
     },
   },
   {

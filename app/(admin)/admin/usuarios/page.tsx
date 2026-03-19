@@ -55,6 +55,7 @@ import {
   Check,
   Trash2,
   Loader2,
+  BookOpen,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -77,6 +78,18 @@ interface Usuario {
   cursos: string[];
 }
 
+interface CursoOption {
+  _id: string;
+  name: string;
+}
+
+interface InviteCursoAccess {
+  cursoId: string;
+  accessDurationMinutes: number | null;
+  durationType: "unlimited" | "minutes" | "hours" | "days";
+  durationValue: number;
+}
+
 interface InviteItem {
   _id: string;
   token: string;
@@ -87,6 +100,10 @@ interface InviteItem {
   createdAt: string;
   createdBy?: { name: string; email: string };
   usedBy?: { name: string; email: string } | null;
+  cursosAccess?: Array<{
+    curso: { _id: string; name: string } | null;
+    accessDurationMinutes: number | null;
+  }>;
 }
 
 const fadeInUp = {
@@ -116,6 +133,8 @@ export default function AdminUsuariosPage() {
     role: "user" as "admin" | "user",
     expiresInHours: 48,
   });
+  const [inviteCursos, setInviteCursos] = useState<InviteCursoAccess[]>([]);
+  const [availableCursos, setAvailableCursos] = useState<CursoOption[]>([]);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
@@ -271,6 +290,46 @@ export default function AdminUsuariosPage() {
     fetchInvites();
   }, [fetchInvites]);
 
+  // Fetch available courses for invite course selection
+  useEffect(() => {
+    fetch("/api/cursos?limit=100", { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => setAvailableCursos(data.cursos || []))
+      .catch(() => {});
+  }, []);
+
+  const handleAddInviteCurso = (cursoId: string) => {
+    if (inviteCursos.some((c) => c.cursoId === cursoId)) return;
+    setInviteCursos((prev) => [
+      ...prev,
+      { cursoId, accessDurationMinutes: null, durationType: "unlimited", durationValue: 1 },
+    ]);
+  };
+
+  const handleRemoveInviteCurso = (cursoId: string) => {
+    setInviteCursos((prev) => prev.filter((c) => c.cursoId !== cursoId));
+  };
+
+  const handleInviteCursoDuration = (
+    cursoId: string,
+    field: string,
+    value: string | number
+  ) => {
+    setInviteCursos((prev) =>
+      prev.map((c) => {
+        if (c.cursoId !== cursoId) return c;
+        const updated = { ...c, [field]: value };
+        const type = field === "durationType" ? (value as string) : c.durationType;
+        const val = field === "durationValue" ? (value as number) : c.durationValue;
+        if (type === "unlimited") updated.accessDurationMinutes = null;
+        else if (type === "minutes") updated.accessDurationMinutes = val;
+        else if (type === "hours") updated.accessDurationMinutes = val * 60;
+        else if (type === "days") updated.accessDurationMinutes = val * 1440;
+        return updated;
+      })
+    );
+  };
+
   const handleCreateInvite = async () => {
     try {
       setCreatingInvite(true);
@@ -282,6 +341,10 @@ export default function AdminUsuariosPage() {
           email: inviteForm.email || undefined,
           role: inviteForm.role,
           expiresInHours: inviteForm.expiresInHours,
+          cursos: inviteCursos.map((c) => ({
+            cursoId: c.cursoId,
+            accessDurationMinutes: c.accessDurationMinutes,
+          })),
         }),
         credentials: "include",
       });
@@ -335,6 +398,7 @@ export default function AdminUsuariosPage() {
 
   const resetInviteDialog = () => {
     setInviteForm({ email: "", role: "user", expiresInHours: 48 });
+    setInviteCursos([]);
     setGeneratedLink(null);
     setCopiedLink(false);
   };
@@ -440,6 +504,86 @@ export default function AdminUsuariosPage() {
                           <SelectItem value="720">30 dias</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+
+                    {/* Course Access */}
+                    <div className="space-y-2">
+                      <Label>Cursos com acesso (opcional)</Label>
+                      <Select onValueChange={handleAddInviteCurso} value="">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Adicionar curso..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableCursos
+                            .filter((c) => !inviteCursos.some((ic) => ic.cursoId === c._id))
+                            .map((c) => (
+                              <SelectItem key={c._id} value={c._id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {inviteCursos.length > 0 && (
+                        <div className="space-y-2 mt-2">
+                          {inviteCursos.map((ic) => {
+                            const curso = availableCursos.find((c) => c._id === ic.cursoId);
+                            return (
+                              <div key={ic.cursoId} className="rounded-lg border p-2.5 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-xs font-medium flex items-center gap-1">
+                                    <BookOpen className="h-3 w-3" />
+                                    {curso?.name || ic.cursoId}
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => handleRemoveInviteCurso(ic.cursoId)}
+                                  >
+                                    <Trash2 className="h-2.5 w-2.5" />
+                                  </Button>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <Select
+                                    value={ic.durationType}
+                                    onValueChange={(v) =>
+                                      handleInviteCursoDuration(ic.cursoId, "durationType", v)
+                                    }
+                                  >
+                                    <SelectTrigger className="h-7 text-[11px] w-[100px]">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="unlimited">Ilimitado</SelectItem>
+                                      <SelectItem value="minutes">Minutos</SelectItem>
+                                      <SelectItem value="hours">Horas</SelectItem>
+                                      <SelectItem value="days">Dias</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                  {ic.durationType !== "unlimited" && (
+                                    <Input
+                                      type="number"
+                                      min={1}
+                                      value={ic.durationValue}
+                                      onChange={(e) =>
+                                        handleInviteCursoDuration(
+                                          ic.cursoId,
+                                          "durationValue",
+                                          parseInt(e.target.value, 10) || 1
+                                        )
+                                      }
+                                      className="h-7 w-16 text-[11px]"
+                                    />
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        Cursos que serao liberados ao aceitar o convite.
+                      </p>
                     </div>
                   </div>
                   <DialogFooter>

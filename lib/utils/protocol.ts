@@ -18,7 +18,7 @@ import { nanoid } from 'nanoid';
 // ---------------------------------------------------------------------------
 
 /** All entity types that receive protocol IDs. */
-export type ProtocolEntityType = 'avaliacao' | 'tentativa' | 'user' | 'curso' | 'invite';
+export type ProtocolEntityType = 'avaliacao' | 'tentativa' | 'user' | 'curso' | 'invite' | 'serialkey';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -34,6 +34,7 @@ const PREFIXES: Record<ProtocolEntityType, string> = {
   user: 'USR',
   curso: 'CRS',
   invite: 'INV',
+  serialkey: 'SKY',
 } as const;
 
 /**
@@ -47,6 +48,7 @@ const ID_SIZES: Record<ProtocolEntityType, number> = {
   user: 8,
   curso: 8,
   invite: 10,
+  serialkey: 10,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -95,7 +97,7 @@ export interface ParsedProtocolId {
 }
 
 /** Regex pattern for valid protocol IDs. */
-const PROTOCOL_ID_REGEX = /^SBA-(\d{4})-(AVL|TEN|USR|CRS|INV)-([A-Za-z0-9_-]+)$/;
+const PROTOCOL_ID_REGEX = /^SBA-(\d{4})-(AVL|TEN|USR|CRS|INV|SKY)-([A-Za-z0-9_-]+)$/;
 
 /**
  * Validate whether a string is a valid SBA protocol ID.
@@ -134,6 +136,7 @@ export function parseProtocolId(id: string): ParsedProtocolId | null {
     USR: 'user',
     CRS: 'curso',
     INV: 'invite',
+    SKY: 'serialkey',
   };
 
   return {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import connectDB from '@/lib/db/mongoose';
 import Invite from '@/lib/db/models/Invite';
@@ -112,6 +113,20 @@ export async function POST(
     // Hash password (12 rounds)
     const passwordHash = await bcrypt.hash(password, 12);
 
+    // Build course access from invite
+    const now = new Date();
+    const inviteCursosAccess = (invite.cursosAccess || []);
+    const cursoIds = inviteCursosAccess.map((ca: { curso: Types.ObjectId; accessDurationMinutes: number | null }) => ca.curso);
+    const cursosAccessEntries = inviteCursosAccess.map((ca: { curso: Types.ObjectId; accessDurationMinutes: number | null }) => ({
+      curso: ca.curso,
+      grantedAt: now,
+      expiresAt: ca.accessDurationMinutes
+        ? new Date(now.getTime() + ca.accessDurationMinutes * 60 * 1000)
+        : null,
+      source: 'invite' as const,
+      sourceRef: invite.token,
+    }));
+
     // Create user
     const user = await User.create({
       protocolId: generateProtocolId('user'),
@@ -122,6 +137,8 @@ export async function POST(
       cpf: cpf || null,
       crm: crm || null,
       isActive: true,
+      cursos: cursoIds,
+      cursosAccess: cursosAccessEntries,
     });
 
     // Update invite

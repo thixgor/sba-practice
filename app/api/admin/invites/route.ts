@@ -5,10 +5,18 @@ import Invite from '@/lib/db/models/Invite';
 import User from '@/lib/db/models/User';
 import AuditLog from '@/lib/db/models/AuditLog';
 import { withAdmin, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
-import { createInviteSchema } from '@/lib/utils/validators';
+import { createInviteWithCoursesSchema } from '@/lib/utils/validators';
 import { sanitizeObject } from '@/lib/security/sanitize';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://sba-practice.vercel.app';
+function getAppUrl(req: Request): string {
+  // Use the request origin (works on Vercel and locally)
+  const host = req.headers.get('host');
+  const proto = req.headers.get('x-forwarded-proto') || 'https';
+  if (host) {
+    return `${proto}://${host}`;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || 'https://sba-practice.vercel.app';
+}
 
 // ---------------------------------------------------------------------------
 // POST /api/admin/invites - Create an invite link (admin only)
@@ -18,7 +26,7 @@ export const POST = withAdmin(async (req: AuthenticatedRequest, _ctx: RouteConte
   try {
     const body = await req.json();
     const sanitizedBody = sanitizeObject(body);
-    const parsed = createInviteSchema.safeParse(sanitizedBody);
+    const parsed = createInviteWithCoursesSchema.safeParse(sanitizedBody);
 
     if (!parsed.success) {
       return NextResponse.json(
@@ -33,7 +41,7 @@ export const POST = withAdmin(async (req: AuthenticatedRequest, _ctx: RouteConte
 
     await connectDB();
 
-    const { email, role, expiresInHours } = parsed.data;
+    const { email, role, expiresInHours, cursos } = parsed.data;
     const normalizedEmail = email && email.length > 0 ? email : null;
 
     // Check if there's already an active invite for this email
@@ -77,6 +85,10 @@ export const POST = withAdmin(async (req: AuthenticatedRequest, _ctx: RouteConte
       createdBy: req.user.userId,
       expiresAt,
       status: 'pending',
+      cursosAccess: (cursos || []).map((c) => ({
+        curso: c.cursoId,
+        accessDurationMinutes: c.accessDurationMinutes || null,
+      })),
     });
 
     // Audit log
@@ -90,7 +102,8 @@ export const POST = withAdmin(async (req: AuthenticatedRequest, _ctx: RouteConte
       metadata: { email: normalizedEmail, role, expiresInHours },
     });
 
-    const inviteLink = `${APP_URL.replace(/\/$/, '')}/convite/${token}`;
+    const appUrl = getAppUrl(req);
+    const inviteLink = `${appUrl.replace(/\/$/, '')}/convite/${token}`;
 
     return NextResponse.json(
       {
