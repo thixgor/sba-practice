@@ -40,11 +40,18 @@ export async function POST(req: NextRequest) {
     const parsed = registerSchema.safeParse(sanitizedBody);
 
     if (!parsed.success) {
+      // Build a human-readable message from all field errors
+      const fieldErrors = parsed.error.flatten().fieldErrors;
+      const messages: string[] = [];
+      for (const [, errs] of Object.entries(fieldErrors)) {
+        if (errs) messages.push(...errs);
+      }
       return NextResponse.json(
         {
           error: 'VALIDATION_ERROR',
-          message: 'Dados inválidos.',
-          details: parsed.error.flatten().fieldErrors,
+          message: messages[0] || 'Dados invalidos.',
+          messages,
+          details: fieldErrors,
         },
         { status: 400 },
       );

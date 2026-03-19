@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import connectDB from '@/lib/db/mongoose';
 import Curso from '@/lib/db/models/Curso';
-import { withAdmin, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
+import User from '@/lib/db/models/User';
+import { withAuth, withAdmin, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
 import { cursoSchema } from '@/lib/utils/validators';
 import { sanitizeObject } from '@/lib/security/sanitize';
 
@@ -19,15 +20,12 @@ async function extractId(ctx: RouteContext): Promise<string | null> {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/cursos/[id] - Get a single course
+// GET /api/cursos/[id] - Get a single course (access-controlled)
 // ---------------------------------------------------------------------------
 
-export async function GET(
-  _req: NextRequest,
-  ctx: RouteContext,
-) {
+export const GET = withAuth(async (req: AuthenticatedRequest, ctx: RouteContext) => {
   try {
-    const id = await extractId(ctx as RouteContext);
+    const id = await extractId(ctx);
     if (!id) {
       return NextResponse.json(
         { error: 'INVALID_ID', message: 'ID de curso invalido.' },
@@ -36,6 +34,24 @@ export async function GET(
     }
 
     await connectDB();
+
+    // For non-admin users, verify they have access to this course
+    if (req.user.role !== 'admin') {
+      const user = await User.findById(req.user.userId);
+      if (!user) {
+        return NextResponse.json(
+          { error: 'FORBIDDEN', message: 'Voce nao tem acesso a este curso.' },
+          { status: 403 },
+        );
+      }
+      const activeCursoIds = user.getActiveCursos().map((c) => c.toString());
+      if (!activeCursoIds.includes(id)) {
+        return NextResponse.json(
+          { error: 'FORBIDDEN', message: 'Voce nao tem acesso a este curso.' },
+          { status: 403 },
+        );
+      }
+    }
 
     const curso = await Curso.findById(id)
       .populate({
@@ -52,7 +68,7 @@ export async function GET(
       );
     }
 
-    // Filter out null entries left by populate match (Mongoose sets non-matching refs to null)
+    // Filter out null entries left by populate match
     if (curso.avaliacoes) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       curso.avaliacoes = (curso.avaliacoes as any[]).filter(Boolean);
@@ -66,7 +82,7 @@ export async function GET(
       { status: 500 },
     );
   }
-}
+});
 
 // ---------------------------------------------------------------------------
 // PUT /api/cursos/[id] - Update a course (admin only)

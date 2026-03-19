@@ -73,8 +73,15 @@ export default function ConvitePage() {
       toast.error("As senhas nao coincidem");
       return;
     }
-    if (form.password.length < 8) {
-      toast.error("A senha deve ter pelo menos 8 caracteres");
+    // Client-side password complexity validation
+    const pwErrors: string[] = [];
+    if (form.password.length < 8) pwErrors.push("A senha deve ter pelo menos 8 caracteres.");
+    if (!/[A-Z]/.test(form.password)) pwErrors.push("A senha deve conter pelo menos uma letra maiuscula.");
+    if (!/[a-z]/.test(form.password)) pwErrors.push("A senha deve conter pelo menos uma letra minuscula.");
+    if (!/[0-9]/.test(form.password)) pwErrors.push("A senha deve conter pelo menos um numero.");
+    if (!/[^A-Za-z0-9]/.test(form.password)) pwErrors.push("A senha deve conter pelo menos um caractere especial.");
+    if (pwErrors.length > 0) {
+      pwErrors.forEach((msg) => toast.error(msg));
       return;
     }
 
@@ -95,13 +102,19 @@ export default function ConvitePage() {
 
       if (!res.ok) {
         const data = await res.json();
+        if (data.messages && Array.isArray(data.messages)) {
+          data.messages.forEach((msg: string) => toast.error(msg));
+          throw new Error("_handled_");
+        }
         throw new Error(data.message || "Erro ao aceitar convite");
       }
 
       toast.success("Conta criada com sucesso! Faca login.");
       router.push("/login");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Erro ao aceitar convite");
+      if (err instanceof Error && err.message !== "_handled_") {
+        toast.error(err.message);
+      }
     } finally {
       setLoading(false);
     }

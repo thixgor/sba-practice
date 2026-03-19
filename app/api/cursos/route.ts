@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db/mongoose';
 import Curso from '@/lib/db/models/Curso';
 import Avaliacao from '@/lib/db/models/Avaliacao';
-import { withAdmin, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
+import User from '@/lib/db/models/User';
+import { withAuth, withAdmin, type AuthenticatedRequest, type RouteContext } from '@/lib/auth/middleware';
 
 // Force model registration for populate
 void Avaliacao;
@@ -11,10 +12,10 @@ import { generateProtocolId } from '@/lib/utils/protocol';
 import { sanitizeObject } from '@/lib/security/sanitize';
 
 // ---------------------------------------------------------------------------
-// GET /api/cursos - List active courses (authenticated users)
+// GET /api/cursos - List courses (filtered by user access)
 // ---------------------------------------------------------------------------
 
-export async function GET(req: NextRequest) {
+export const GET = withAuth(async (req: AuthenticatedRequest, _ctx: RouteContext) => {
   try {
     await connectDB();
 
@@ -29,6 +30,20 @@ export async function GET(req: NextRequest) {
         { name: { $regex: search.trim(), $options: 'i' } },
         { description: { $regex: search.trim(), $options: 'i' } },
       ];
+    }
+
+    // For non-admin users, filter to only their active courses
+    if (req.user.role !== 'admin') {
+      const user = await User.findById(req.user.userId);
+      if (user) {
+        const activeCursoIds = user.getActiveCursos();
+        if (activeCursoIds.length === 0) {
+          return NextResponse.json({ cursos: [] }, { status: 200 });
+        }
+        filter._id = { $in: activeCursoIds };
+      } else {
+        return NextResponse.json({ cursos: [] }, { status: 200 });
+      }
     }
 
     const cursos = await Curso.find(filter)
@@ -56,7 +71,7 @@ export async function GET(req: NextRequest) {
       { status: 500 },
     );
   }
-}
+});
 
 // ---------------------------------------------------------------------------
 // POST /api/cursos - Create a course (admin only)

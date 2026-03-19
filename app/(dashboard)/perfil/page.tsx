@@ -171,23 +171,47 @@ export default function PerfilPage() {
   // QR Scanner using native BarcodeDetector or canvas-based scanning
   const startScanner = async () => {
     try {
+      setScanning(true);
+
+      // Small delay to let the video element render
+      await new Promise((r) => setTimeout(r, 100));
+
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 640 },
+          height: { ideal: 640 },
+        },
       });
       streamRef.current = stream;
-      setScanning(true);
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        // Wait for video metadata to load before playing
+        await new Promise<void>((resolve, reject) => {
+          const video = videoRef.current!;
+          video.onloadedmetadata = () => {
+            video
+              .play()
+              .then(() => resolve())
+              .catch(reject);
+          };
+          // Timeout fallback
+          setTimeout(() => resolve(), 3000);
+        });
       }
 
-      // Start scanning frames
+      // Start scanning frames after video is playing
       scanIntervalRef.current = setInterval(() => {
         scanFrame();
       }, 500);
     } catch (err) {
       console.error("Camera error:", err);
+      setScanning(false);
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
       toast.error(
         "Nao foi possivel acessar a camera. Verifique as permissoes."
       );
@@ -400,6 +424,7 @@ export default function PerfilPage() {
                     className="w-full aspect-square object-cover"
                     playsInline
                     muted
+                    autoPlay
                   />
                   <canvas ref={canvasRef} className="hidden" />
                   {/* Scanner overlay */}

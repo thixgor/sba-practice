@@ -66,6 +66,14 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 
+interface CursoAccessEntry {
+  curso: { _id: string; name: string } | null;
+  grantedAt: string;
+  expiresAt: string | null;
+  source: string;
+  sourceRef: string | null;
+}
+
 interface Usuario {
   _id: string;
   protocolId: string;
@@ -76,6 +84,7 @@ interface Usuario {
   lastLogin?: string;
   createdAt: string;
   cursos: string[];
+  cursosAccess?: CursoAccessEntry[];
 }
 
 interface CursoOption {
@@ -401,6 +410,94 @@ export default function AdminUsuariosPage() {
     setInviteCursos([]);
     setGeneratedLink(null);
     setCopiedLink(false);
+  };
+
+  // Course management dialog state
+  const [courseDialogOpen, setCourseDialogOpen] = useState(false);
+  const [courseDialogUser, setCourseDialogUser] = useState<Usuario | null>(null);
+  const [courseDialogLoading, setCourseDialogLoading] = useState(false);
+  const [courseDialogUserData, setCourseDialogUserData] = useState<{
+    cursosAccess: CursoAccessEntry[];
+  } | null>(null);
+  const [grantCursoId, setGrantCursoId] = useState("");
+  const [grantDurationType, setGrantDurationType] = useState<"unlimited" | "minutes" | "hours" | "days">("unlimited");
+  const [grantDurationValue, setGrantDurationValue] = useState(1);
+  const [grantingCourse, setGrantingCourse] = useState(false);
+  const [revokingCourseId, setRevokingCourseId] = useState<string | null>(null);
+
+  const openCourseDialog = async (user: Usuario) => {
+    setCourseDialogUser(user);
+    setCourseDialogOpen(true);
+    setCourseDialogLoading(true);
+    try {
+      const res = await fetch(`/api/usuarios/${user._id}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Erro ao buscar usuario");
+      const data = await res.json();
+      setCourseDialogUserData({
+        cursosAccess: data.user?.cursosAccess || [],
+      });
+    } catch {
+      toast.error("Erro ao carregar cursos do usuario.");
+      setCourseDialogUserData({ cursosAccess: [] });
+    } finally {
+      setCourseDialogLoading(false);
+    }
+  };
+
+  const handleGrantCourse = async () => {
+    if (!courseDialogUser || !grantCursoId) return;
+    setGrantingCourse(true);
+    try {
+      let accessDurationMinutes: number | null = null;
+      if (grantDurationType === "minutes") accessDurationMinutes = grantDurationValue;
+      else if (grantDurationType === "hours") accessDurationMinutes = grantDurationValue * 60;
+      else if (grantDurationType === "days") accessDurationMinutes = grantDurationValue * 1440;
+
+      const res = await fetch(`/api/usuarios/${courseDialogUser._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          grantCourseAccess: { cursoId: grantCursoId, accessDurationMinutes },
+        }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Erro ao conceder acesso");
+      const data = await res.json();
+      setCourseDialogUserData({
+        cursosAccess: data.user?.cursosAccess || [],
+      });
+      setGrantCursoId("");
+      setGrantDurationType("unlimited");
+      setGrantDurationValue(1);
+      toast.success("Acesso ao curso concedido!");
+    } catch {
+      toast.error("Erro ao conceder acesso ao curso.");
+    } finally {
+      setGrantingCourse(false);
+    }
+  };
+
+  const handleRevokeCourse = async (cursoId: string) => {
+    if (!courseDialogUser) return;
+    setRevokingCourseId(cursoId);
+    try {
+      const res = await fetch(`/api/usuarios/${courseDialogUser._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ revokeCourseAccess: cursoId }),
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Erro ao revogar acesso");
+      const data = await res.json();
+      setCourseDialogUserData({
+        cursosAccess: data.user?.cursosAccess || [],
+      });
+      toast.success("Acesso ao curso revogado!");
+    } catch {
+      toast.error("Erro ao revogar acesso ao curso.");
+    } finally {
+      setRevokingCourseId(null);
+    }
   };
 
   const filteredUsuarios = usuarios;
@@ -945,6 +1042,10 @@ export default function AdminUsuariosPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
+                                <DropdownMenuItem className="gap-2" onClick={() => openCourseDialog(user)}>
+                                  <BookOpen className="h-3.5 w-3.5" />
+                                  Gerenciar Cursos
+                                </DropdownMenuItem>
                                 <DropdownMenuItem className="gap-2">
                                   <Eye className="h-3.5 w-3.5" />
                                   Ver Historico
@@ -1028,6 +1129,156 @@ export default function AdminUsuariosPage() {
           </div>
         </motion.div>
       )}
+      {/* Course Management Dialog */}
+      <Dialog open={courseDialogOpen} onOpenChange={(open) => {
+        setCourseDialogOpen(open);
+        if (!open) {
+          setCourseDialogUser(null);
+          setCourseDialogUserData(null);
+          setGrantCursoId("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-primary" />
+              Gerenciar Cursos
+            </DialogTitle>
+            <DialogDescription>
+              {courseDialogUser?.name} — {courseDialogUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Current Access */}
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+                Cursos com acesso
+              </Label>
+              {courseDialogLoading ? (
+                <div className="space-y-2">
+                  {[...Array(2)].map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : !courseDialogUserData?.cursosAccess?.length ? (
+                <p className="text-sm text-muted-foreground py-3 text-center border rounded-lg">
+                  Nenhum curso atribuido.
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                  {courseDialogUserData.cursosAccess.map((ca, i) => {
+                    const cursoName = ca.curso?.name || "Curso removido";
+                    const cursoId = ca.curso?._id || "";
+                    const isExpired = ca.expiresAt && new Date(ca.expiresAt) < new Date();
+                    return (
+                      <div
+                        key={i}
+                        className={`flex items-center justify-between rounded-lg border p-2.5 text-xs ${isExpired ? "opacity-50" : ""}`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium flex items-center gap-1.5">
+                            <BookOpen className="h-3 w-3 text-primary shrink-0" />
+                            <span className="truncate">{cursoName}</span>
+                          </span>
+                          <div className="flex items-center gap-2 mt-0.5 text-muted-foreground">
+                            <span className="capitalize">{ca.source}</span>
+                            <span>•</span>
+                            {ca.expiresAt ? (
+                              <span className={isExpired ? "text-sba-error" : ""}>
+                                {isExpired ? "Expirado" : `Expira ${new Date(ca.expiresAt).toLocaleDateString("pt-BR")}`}
+                              </span>
+                            ) : (
+                              <span>Ilimitado</span>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-sba-error shrink-0"
+                          disabled={revokingCourseId === cursoId}
+                          onClick={() => cursoId && handleRevokeCourse(cursoId)}
+                        >
+                          {revokingCourseId === cursoId ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Grant New Access */}
+            <div>
+              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+                Conceder acesso a curso
+              </Label>
+              <div className="space-y-2">
+                <Select value={grantCursoId} onValueChange={setGrantCursoId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar curso..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableCursos.map((c) => (
+                      <SelectItem key={c._id} value={c._id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={grantDurationType}
+                    onValueChange={(v) => setGrantDurationType(v as typeof grantDurationType)}
+                  >
+                    <SelectTrigger className="w-[120px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unlimited">Ilimitado</SelectItem>
+                      <SelectItem value="minutes">Minutos</SelectItem>
+                      <SelectItem value="hours">Horas</SelectItem>
+                      <SelectItem value="days">Dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {grantDurationType !== "unlimited" && (
+                    <Input
+                      type="number"
+                      min={1}
+                      value={grantDurationValue}
+                      onChange={(e) => setGrantDurationValue(parseInt(e.target.value, 10) || 1)}
+                      className="w-20"
+                    />
+                  )}
+                  <Button
+                    onClick={handleGrantCourse}
+                    disabled={!grantCursoId || grantingCourse}
+                    size="sm"
+                  >
+                    {grantingCourse ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      "Conceder"
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCourseDialogOpen(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Pending Invites Section */}
       <motion.div
         {...fadeInUp}
